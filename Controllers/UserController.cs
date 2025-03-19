@@ -1,4 +1,5 @@
 ﻿using IdentitiyExample.Models;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
@@ -8,6 +9,7 @@ namespace IdentityExample.Controllers
 {
     [Route("api/[controller]/[action]")]
     [ApiController]
+    [Authorize]
     public class UserController : ControllerBase
     {
         private readonly UserManager<AppUser> _userManager;
@@ -17,6 +19,18 @@ namespace IdentityExample.Controllers
             _userManager = userManager;
         }
 
+      
+        [HttpGet]
+        public async Task<IActionResult> GetProfile()
+        {
+            var email = User.Identity!.Name;
+            var user = await _userManager.FindByNameAsync(email!);
+            if (user == null) return NotFound();
+
+            return Ok(new { user.Email, user.Id });
+        }
+
+        [Authorize(Roles = "admin")]
         [HttpGet]
         public async Task<IActionResult> GetAllUser()
         {

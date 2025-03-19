@@ -3,6 +3,7 @@ using IdentitiyExample.Models;
 using IdentitiyExample.Validators;
 using IdentityExample.DTOs;
 using IdentityExample.Validators;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
@@ -12,6 +13,7 @@ namespace IdentityExample.Controllers
 {
     [Route("api/[controller]/[action]")]
     [ApiController]
+    [Authorize(Roles ="admin")]
     public class RoleController : ControllerBase
     {
         private readonly RoleManager<AppRole> _roleManager;
@@ -71,7 +73,7 @@ namespace IdentityExample.Controllers
         }
 
 
-
+        
 
         [HttpPost]
         public async Task<IActionResult> AddUserToRole(string userId, string roleName)

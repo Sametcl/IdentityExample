@@ -9,6 +9,11 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.IdentityModel.JsonWebTokens;
+using Microsoft.IdentityModel.Tokens;
+using System.IdentityModel.Tokens.Jwt;
+using System.Security.Claims;
+using System.Text;
 
 namespace IdentitiyExample.Controllers
 {
@@ -17,11 +22,13 @@ namespace IdentitiyExample.Controllers
     public class AuthController : ControllerBase
     {
         public readonly UserManager<AppUser> _userManager;
+        private readonly IConfiguration _configuration;
         public readonly IMapper _mapper;
-        public AuthController(UserManager<AppUser> userManager, IMapper mapper)
+        public AuthController(UserManager<AppUser> userManager, IMapper mapper, IConfiguration configuration)
         {
             _userManager = userManager;
             _mapper = mapper;
+            _configuration = configuration;
         }
 
         [HttpPost]
@@ -42,11 +49,11 @@ namespace IdentitiyExample.Controllers
             }
             var user = _mapper.Map<AppUser>(request);//Mapping islemi
             IdentityResult result = await _userManager.CreateAsync(user, request.Password);
-            if (result.Succeeded)
+            if (!result.Succeeded)
             {
-                return Ok(new { Message = "kullanici kaydedildi" });
+                return BadRequest(new { Message = "Kullanici kayit islemi basarisiz" });
             }
-            return BadRequest(new { Message = "Kullanici kayit islemi basarisiz" });
+            return Ok(new { Message = "kullanici kaydedildi" });
         }
 
         [HttpPost]
@@ -66,12 +73,33 @@ namespace IdentitiyExample.Controllers
             {
                 return BadRequest(new { Message = "Kullanici bulunamadi" });
             }
-            var result =await _userManager.CheckPasswordAsync(user, request.Password);
-            if (result)
+            var result = await _userManager.CheckPasswordAsync(user, request.Password);
+            if (!result)
             {
-                return Ok(new { Message = "giris basarili" });
+                return BadRequest(new { Message = "Girilen bilgiler uyusmuyor" });
             }
-            return BadRequest(new { Message = "Paralo yanlis" });
+            //kullanici rollerini getirelim 
+            var userRoles = await _userManager.GetRolesAsync(user);
+            var claims = new List<Claim>
+                   {
+                       new Claim(ClaimTypes.Name,user.UserName!),
+                       new Claim(ClaimTypes.Email,user.Email!)
+                   };
+            foreach (var role in userRoles)
+            {
+                claims.Add(new Claim(ClaimTypes.Role, role));
+            }
+          
+            var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes("MySuperLongSecureSecretKeyForJwtSigning12345"));   
+            var creds = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
+            var jwttoken = new JwtSecurityToken(
+                        issuer: _configuration["Jwt:Issuer"],
+                        audience: _configuration["Jwt:Audience"],
+                        claims: claims,
+                        expires: DateTime.UtcNow.AddMinutes(15),
+                        signingCredentials: creds);
+
+            return Ok(new { token = new JwtSecurityTokenHandler().WriteToken(jwttoken) });
 
         }
     }
