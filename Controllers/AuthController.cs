@@ -82,15 +82,16 @@ namespace IdentitiyExample.Controllers
             var userRoles = await _userManager.GetRolesAsync(user);
             var claims = new List<Claim>
                    {
-                       new Claim(ClaimTypes.Name,user.UserName!),
+                       new Claim(ClaimTypes.NameIdentifier,user.Id.ToString()),
+                       new Claim(ClaimTypes.GivenName,user.UserName!),
                        new Claim(ClaimTypes.Email,user.Email!)
                    };
             foreach (var role in userRoles)
             {
                 claims.Add(new Claim(ClaimTypes.Role, role));
             }
-          
-            var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes("MySuperLongSecureSecretKeyForJwtSigning12345"));   
+
+            var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_configuration["Jwt:Key"]!));   
             var creds = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
             var jwttoken = new JwtSecurityToken(
                         issuer: _configuration["Jwt:Issuer"],
