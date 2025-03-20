@@ -4,6 +4,7 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using System.Security.Claims;
 
 namespace IdentityExample.Controllers
 {
@@ -19,15 +20,18 @@ namespace IdentityExample.Controllers
             _userManager = userManager;
         }
 
-      
-        [HttpGet]
-        public async Task<IActionResult> GetProfile()
-        {
-            var email = User.Identity!.Name;
-            var user = await _userManager.FindByNameAsync(email!);
-            if (user == null) return NotFound();
 
-            return Ok(new { user.Email, user.Id });
+        [HttpGet]
+        public IActionResult GetProfile()
+        {
+            var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+            var email = User.FindFirst(ClaimTypes.Email)?.Value;
+            var name = User.FindFirst(ClaimTypes.GivenName)?.Value;
+            var roles = User.Claims.Where(c => c.Type == ClaimTypes.Role).Select(c => c.Value).ToList();
+
+            if (userId == null || email == null) return NotFound();
+
+            return Ok(new { Email = email, Id = userId, Roles = roles ,Name=name});
         }
 
         [Authorize(Roles = "admin")]
